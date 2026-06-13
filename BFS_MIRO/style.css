@@ -1,0 +1,171 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f4f6fa;
+  --surface: #ffffff;
+  --text: #1b2430;
+  --muted: #64748b;
+  --wall: #0f172a;
+  --floor: #e2e8f0;
+  --player: #ef4444;
+  --start: #22c55e;
+  --goal: #3b82f6;
+  --path: #f59e0b;
+  --bfs: #a855f7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, Pretendard, system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+h1,
+h2 {
+  margin-top: 0;
+}
+
+.description {
+  color: var(--muted);
+}
+
+.view {
+  display: none;
+}
+
+.view.active {
+  display: block;
+}
+
+.game-layout,
+.result-layout {
+  display: grid;
+  gap: 20px;
+}
+
+.game-layout {
+  grid-template-columns: auto 280px;
+  align-items: start;
+}
+
+.result-layout {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.panel,
+.score-card {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.1);
+}
+
+.stats {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  background: #334155;
+  color: #f8fafc;
+}
+
+.btn:hover {
+  opacity: 0.9;
+}
+
+.btn.danger {
+  background: #b91c1c;
+}
+
+.btn.hidden {
+  display: none;
+}
+
+.status {
+  margin-top: 12px;
+  min-height: 1.4em;
+  color: #0f766e;
+}
+
+.maze {
+  display: grid;
+  gap: 2px;
+  background: #94a3b8;
+  padding: 2px;
+  border-radius: 8px;
+  width: fit-content;
+}
+
+.cell {
+  width: 34px;
+  height: 34px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.wall {
+  background: var(--wall);
+}
+
+.floor {
+  background: var(--floor);
+}
+
+.start {
+  background: var(--start);
+}
+
+.goal {
+  background: var(--goal);
+  color: #fff;
+}
+
+.player {
+  background: var(--player);
+  color: #fff;
+}
+
+.player-path {
+  box-shadow: inset 0 0 0 3px var(--path);
+}
+
+.bfs-path {
+  box-shadow: inset 0 0 0 3px var(--bfs);
+}
+
+@media (max-width: 840px) {
+  .game-layout,
+  .result-layout {
+    grid-template-columns: 1fr;
+  }
+}
