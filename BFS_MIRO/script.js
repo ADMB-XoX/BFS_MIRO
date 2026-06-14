@@ -1,48 +1,24 @@
-const levels = [
+const levelConfigs = [
   {
     name: "쉬움",
-    map: [
-      [0, 0, 0, 1, 0, 0, 0, 0],
-      [1, 1, 0, 1, 0, 1, 1, 0],
-      [0, 0, 0, 0, 0, 1, 0, 0],
-      [0, 1, 1, 1, 0, 1, 0, 1],
-      [0, 0, 0, 1, 0, 0, 0, 1],
-      [1, 1, 0, 0, 0, 1, 0, 0],
-      [0, 0, 0, 1, 0, 0, 0, 0],
-      [0, 1, 0, 0, 0, 1, 1, 0],
-    ],
+    rows: 8,
+    cols: 8,
+    wallRatio: 0.18,
+    minPathRatio: 1.0,
   },
   {
     name: "보통",
-    map: [
-      [0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-      [1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
-      [0, 0, 0, 0, 1, 0, 0, 0, 1, 0],
-      [0, 1, 1, 0, 1, 1, 1, 0, 1, 0],
-      [0, 1, 0, 0, 0, 0, 1, 0, 0, 0],
-      [0, 1, 0, 1, 1, 0, 1, 1, 1, 0],
-      [0, 0, 0, 1, 0, 0, 0, 0, 1, 0],
-      [1, 1, 0, 1, 0, 1, 1, 0, 1, 0],
-      [0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-      [0, 1, 1, 1, 0, 0, 0, 1, 1, 0],
-    ],
+    rows: 10,
+    cols: 10,
+    wallRatio: 0.24,
+    minPathRatio: 1.1,
   },
   {
     name: "어려움",
-    map: [
-      [0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0],
-      [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1],
-      [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-      [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1],
-      [0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0],
-      [1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0],
-      [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0],
-      [0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
-      [0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0],
-      [0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0],
-      [0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0],
-      [1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0],
-    ],
+    rows: 12,
+    cols: 12,
+    wallRatio: 0.28,
+    minPathRatio: 1.2,
   },
 ];
 
@@ -93,14 +69,13 @@ let bfsPath = [];
 let levelScores = [];
 
 function initLevel() {
-  const level = levels[currentLevelIndex];
-  mazeMap = level.map;
+  const level = levelConfigs[currentLevelIndex];
+  mazeMap = generateMaze(level.rows, level.cols, level.wallRatio, level.minPathRatio);
   goalPos = { r: mazeMap.length - 1, c: mazeMap[0].length - 1 };
   bfsPath = findShortestPathBfs(mazeMap, startPos, goalPos);
 
-  // 예외 상황: 레벨 데이터가 잘못되어 도달 경로가 없으면 첫 레벨로 복귀
+  // 예외 상황: 만에 하나 도달 경로가 없는 맵이 생성되면 다시 생성
   if (bfsPath.length === 0) {
-    currentLevelIndex = 0;
     initLevel();
     return;
   }
@@ -117,6 +92,63 @@ function initLevel() {
   updateTimer();
   renderGameMaze();
   updateLevelLabel();
+}
+
+// 난이도(rows, cols, 벽 비율, 최소 경로 길이 배율)에 맞는 랜덤 미로를 생성한다.
+// 시작(S)과 도착(G)은 항상 빈 칸으로 두고, BFS로 도달 가능 여부와
+// 최소 경로 길이를 검사해 너무 단순한(직선에 가까운) 맵은 다시 생성한다.
+function generateMaze(rows, cols, wallRatio, minPathRatio) {
+  const start = { r: 0, c: 0 };
+  const goal = { r: rows - 1, c: cols - 1 };
+
+  // 직선 최단 거리(맨해튼 거리) 기준 셀 개수: 우회가 전혀 없을 때의 경로 길이
+  const minDirectLength = (rows - 1) + (cols - 1) + 1;
+  const minRequiredLength = Math.round(minDirectLength * minPathRatio);
+
+  const maxAttempts = 500;
+
+  // 목표 길이를 만족하지 못하더라도, 도달 가능한 맵 중 가장 우회 경로가
+  // 길었던 맵을 보관해 두어 최종 안전장치로 사용한다.
+  let bestMap = null;
+  let bestPathLength = -1;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const map = createRandomMap(rows, cols, wallRatio, start, goal);
+    const path = findShortestPathBfs(map, start, goal);
+
+    if (path.length === 0) continue; // 도달 불가능한 맵은 버린다.
+
+    if (path.length >= minRequiredLength) {
+      return map;
+    }
+
+    if (path.length > bestPathLength) {
+      bestPathLength = path.length;
+      bestMap = map;
+    }
+  }
+
+  if (bestMap) return bestMap;
+
+  // 안전장치: 도달 가능한 맵을 전혀 찾지 못한 경우(매우 드묾)
+  // 벽이 없는 맵을 반환해 항상 클리어 가능하도록 보장한다.
+  return Array.from({ length: rows }, () => Array(cols).fill(0));
+}
+
+// 시작/도착 칸을 제외한 칸을 wallRatio 확률로 벽(1)으로 채운 무작위 맵을 만든다.
+function createRandomMap(rows, cols, wallRatio, start, goal) {
+  const map = [];
+  for (let r = 0; r < rows; r += 1) {
+    const row = [];
+    for (let c = 0; c < cols; c += 1) {
+      const isStart = r === start.r && c === start.c;
+      const isGoal = r === goal.r && c === goal.c;
+      const isWall = !isStart && !isGoal && Math.random() < wallRatio;
+      row.push(isWall ? 1 : 0);
+    }
+    map.push(row);
+  }
+  return map;
 }
 
 function renderGameMaze() {
@@ -252,7 +284,7 @@ function finishGame(isGiveUp) {
   levelScores[currentLevelIndex] = finalScore;
   const avgScore = calcAverageScore();
 
-  resultLevelEl.textContent = `${currentLevelIndex + 1} / ${levels.length} (${levels[currentLevelIndex].name})`;
+  resultLevelEl.textContent = `${currentLevelIndex + 1} / ${levelConfigs.length} (${levelConfigs[currentLevelIndex].name})`;
   resultTypeEl.textContent = isGiveUp ? "포기" : "클리어";
   playerMovesEl.textContent = String(playerMoves);
   bfsMovesEl.textContent = String(bfsMoves);
@@ -261,9 +293,9 @@ function finishGame(isGiveUp) {
   finalScoreEl.textContent = String(finalScore);
   avgScoreEl.textContent = `${avgScore}점`;
 
-  const canMoveNext = !isGiveUp && currentLevelIndex < levels.length - 1;
+  const canMoveNext = !isGiveUp && currentLevelIndex < levelConfigs.length - 1;
   nextLevelBtn.classList.toggle("hidden", !canMoveNext);
-  if (!isGiveUp && currentLevelIndex === levels.length - 1) {
+  if (!isGiveUp && currentLevelIndex === levelConfigs.length - 1) {
     statusMessageEl.textContent = "모든 단계를 클리어했습니다!";
   }
 }
@@ -342,8 +374,8 @@ function reconstructPath(parent, start, goal) {
 }
 
 function updateLevelLabel() {
-  const level = levels[currentLevelIndex];
-  currentLevelEl.textContent = `${currentLevelIndex + 1} / ${levels.length} (${level.name})`;
+  const level = levelConfigs[currentLevelIndex];
+  currentLevelEl.textContent = `${currentLevelIndex + 1} / ${levelConfigs.length} (${level.name})`;
 }
 
 function calcAverageScore() {
@@ -366,7 +398,7 @@ playAgainBtn.addEventListener("click", () => {
   initLevel();
 });
 nextLevelBtn.addEventListener("click", () => {
-  if (currentLevelIndex >= levels.length - 1) return;
+  if (currentLevelIndex >= levelConfigs.length - 1) return;
   currentLevelIndex += 1;
   moveToGameView();
   initLevel();
